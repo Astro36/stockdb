@@ -1,9 +1,11 @@
 CREATE TABLE symbols (
-    id     integer               PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    symbol character varying(10) NOT NULL,
-    name   character varying(20) NOT NULL
+    id           integer               PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    name         character varying(20) NOT NULL,
+    listing_date date                  NOT NULL,
+    yfsymbol     character varying(10) NOT NULL
 );
 CREATE INDEX symbols_name_idx ON symbols (name);
+CREATE INDEX symbols_yfsymbol_idx ON symbols (yfsymbol);
 
 CREATE TABLE quotes (
     date      date           NOT NULL,
@@ -15,4 +17,4 @@ CREATE TABLE quotes (
     volume    integer        NOT NULL
 );
 SELECT create_hypertable('quotes', by_range('date'));
-CREATE UNIQUE INDEX quotes_symbol_idx ON quotes (symbols, date);
+CREATE UNIQUE INDEX quotes_symbol_idx ON quotes (symbol_id, date);
