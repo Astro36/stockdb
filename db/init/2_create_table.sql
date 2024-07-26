@@ -10,11 +10,11 @@ CREATE INDEX symbols_yfsymbol_idx ON symbols (yfsymbol);
 CREATE TABLE quotes (
     date      date           NOT NULL,
     symbol_id integer        NOT NULL REFERENCES symbols,
-    open      numeric(10, 2) NOT NULL,
-    high      numeric(10, 2) NOT NULL,
-    low       numeric(10, 2) NOT NULL,
-    close     numeric(10, 2) NOT NULL,
-    volume    integer        NOT NULL
+    open      numeric(12, 2),
+    high      numeric(12, 2),
+    low       numeric(12, 2),
+    close     numeric(12, 2),
+    volume    bigint
 );
 SELECT create_hypertable('quotes', by_range('date'));
 CREATE UNIQUE INDEX quotes_symbol_idx ON quotes (symbol_id, date);

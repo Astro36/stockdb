@@ -23,7 +23,7 @@ def get_market_prices(symbol: str):
             "SELECT updated_at FROM quote_logs l JOIN symbols s ON s.id = l.symbol_id WHERE yfsymbol = %s",
             (symbol,),
         ).fetchone()
-        if updated_at_record and updated_at_record[0] + timedelta(days=1) >= datetime.now().date():
+        if updated_at_record and (updated_at_record[0] + timedelta(days=1)) >= datetime.now().date():
             records = cur.execute(
                 """
                 SELECT
@@ -42,16 +42,25 @@ def get_market_prices(symbol: str):
             (symbol,),
         ).fetchone()
 
-        listing_timestamp = int((datetime.combine(listing_date, datetime.min.time())).timestamp())
-
-        df = fetch_market_prices_from_yfinance(symbol, start=listing_timestamp)
-        cur.executemany(
-            f"INSERT INTO quotes VALUES (%s, {symbol_id}, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;",
-            df.rows(),
+        listing_timestamp = (
+            int(datetime.combine(listing_date, datetime.min.time()).timestamp()) if listing_date.year >= 1970 else 0
         )
-        cur.execute("INSERT INTO quote_logs VALUES (%s, now());", (symbol_id,))
-        conn.commit()
-        return Response(content=df.write_csv())
+        end_datetime = datetime.now() - timedelta(days=1)
+        end_timestamp = int(end_datetime.timestamp())
+
+        if (df := fetch_market_prices_from_yfinance(symbol, start=listing_timestamp, end=end_timestamp)) is not None:
+            cur.executemany(
+                f"INSERT INTO quotes VALUES (%s, {symbol_id}, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;",
+                df.rows(),
+            )
+            cur.execute(
+                "INSERT INTO quote_logs VALUES (%s, %s) ON CONFLICT (symbol_id) DO UPDATE SET updated_at = %s;",
+                (symbol_id, end_datetime, end_datetime),
+            )
+            conn.commit()
+            return Response(content=df.write_csv())
+
+        return Response(status_code=404)
 
 
 def fetch_market_prices_from_yfinance(symbol: str, start="846944000", end=int(datetime.now().timestamp())):
@@ -61,15 +70,17 @@ def fetch_market_prices_from_yfinance(symbol: str, start="846944000", end=int(da
         f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?period1={start}&period2={end}&interval=1d&events=div%7Csplit%7Cearn",
         headers={"User-Agent": "insomnia/9.3.2"},
     )
-    data = r.json()
-    df = pl.DataFrame(
-        {
-            "date": data["chart"]["result"][0]["timestamp"],
-            "open": data["chart"]["result"][0]["indicators"]["quote"][0]["open"],
-            "high": data["chart"]["result"][0]["indicators"]["quote"][0]["high"],
-            "low": data["chart"]["result"][0]["indicators"]["quote"][0]["low"],
-            "close": data["chart"]["result"][0]["indicators"]["quote"][0]["close"],
-            "volume": data["chart"]["result"][0]["indicators"]["quote"][0]["volume"],
-        }
-    ).with_columns(pl.from_epoch("date").dt.strftime("%Y-%m-%d"))
-    return df
+    if r.status_code == 200:
+        data = r.json()
+        df = pl.DataFrame(
+            {
+                "date": data["chart"]["result"][0]["timestamp"],
+                "open": data["chart"]["result"][0]["indicators"]["quote"][0]["open"],
+                "high": data["chart"]["result"][0]["indicators"]["quote"][0]["high"],
+                "low": data["chart"]["result"][0]["indicators"]["quote"][0]["low"],
+                "close": data["chart"]["result"][0]["indicators"]["quote"][0]["close"],
+                "volume": data["chart"]["result"][0]["indicators"]["quote"][0]["volume"],
+            }
+        ).with_columns(pl.from_epoch("date").dt.strftime("%Y-%m-%d"))
+        return df
+    return None
