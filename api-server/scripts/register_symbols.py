@@ -11,16 +11,11 @@ def main():
         .select(
             [
                 pl.col("한글 종목약명").alias("name"),
-                pl.col("상장일")
-                .str.to_datetime(format="%Y/%m/%d")
-                .dt.strftime("%Y-%m-%d")
-                .alias("listing_date"),
+                pl.col("상장일").str.to_datetime(format="%Y/%m/%d").dt.strftime("%Y-%m-%d").alias("listing_date"),
                 pl.concat_str(
                     [
                         "단축코드",
-                        pl.when(pl.col("시장구분") == "KOSPI")
-                        .then(pl.lit(".KS"))
-                        .otherwise(pl.lit(".KQ")),
+                        pl.when(pl.col("시장구분") == "KOSPI").then(pl.lit(".KS")).otherwise(pl.lit(".KQ")),
                     ]
                 ).alias("yfsymbol"),
             ]

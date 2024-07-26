@@ -12,7 +12,11 @@ polars = "^1.2.1"
 psycopg = {extras = ["binary"], version = "^3.2.1"}
 requests = "^2.32.3"
 
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+fix = true
+line-length = 120
+target-version = "py312"

@@ -18,3 +18,8 @@ CREATE TABLE quotes (
 );
 SELECT create_hypertable('quotes', by_range('date'));
 CREATE UNIQUE INDEX quotes_symbol_idx ON quotes (symbol_id, date);
+
+CREATE TABLE quote_logs (
+    symbol_id  integer PRIMARY KEY,
+    updated_at date    NOT NULL
+);
