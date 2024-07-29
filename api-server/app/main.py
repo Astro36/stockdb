@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Response
+import os
 import polars as pl
 import psycopg
 import requests
 
 
 app = FastAPI()
-conn = psycopg.connect("dbname=stockdb user= password=")
+conn = psycopg.connect(f"host=db dbname={os.getenv("POSTGRES_DB")} user={os.getenv("POSTGRES_USER")} password={os.getenv("POSTGRES_PASSWORD")}")
 
 
 @app.get("/symbols")
